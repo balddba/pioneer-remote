@@ -32,11 +32,11 @@ COPY main.py ./
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Expose HTTP port
-EXPOSE 8000
+EXPOSE 8099
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8099/health')" || exit 1
 
 # Run FastAPI server
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8099"]
