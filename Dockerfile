@@ -18,6 +18,7 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH" \
     PIONEER_IP="10.1.1.199" \
     PIONEER_PORT=8102
 
@@ -38,5 +39,5 @@ EXPOSE 8099
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8099/health')" || exit 1
 
-# Run FastAPI server
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8099"]
+# Run FastAPI server directly from the uv virtual environment
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8099"]
