@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/commandconsole.tsx","./src/components/header.tsx","./src/components/inputselector.tsx","./src/components/powercontrol.tsx","./src/components/toast.tsx","./src/components/volumecontrol.tsx","./src/services/api.ts","./src/types/pioneer.ts","./src/utils/haptics.ts"],"version":"5.7.3"}

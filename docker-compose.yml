@@ -1,0 +1,18 @@
+services:
+  pioneer-remote:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pioneer-remote
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PIONEER_IP=10.1.1.199
+      - PIONEER_PORT=8102
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s

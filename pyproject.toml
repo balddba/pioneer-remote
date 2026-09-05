@@ -1,0 +1,20 @@
+[project]
+name = "pioneerremote"
+version = "0.1.0"
+description = "FastAPI application to control Pioneer amplifier via telnet"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.104.0",
+    "loguru>=0.7.3",
+    "uvicorn[standard]>=0.24.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
