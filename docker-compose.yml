@@ -7,13 +7,11 @@ services:
     restart: unless-stopped
     networks:
       - default
-      - proxy-net
     ports:
-      - "8099:8099"
+      - "${PORT:?Set PORT in .env}:8099"
     environment:
-      - PIONEER_IP=10.1.1.199
-      - PIONEER_PORT=8102
-      - PORT=8099
+      PIONEER_IP: ${PIONEER_IP:?Set PIONEER_IP in .env}
+      PIONEER_PORT: ${PIONEER_PORT:?Set PIONEER_PORT in .env}
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8099/health')\" || exit 1"]
       interval: 30s
@@ -22,5 +20,6 @@ services:
       start_period: 5s
 
 networks:
-  proxy-net:
-    external: true
+  default:
+    name: ${DEPLOYMENT_NET:-${COMPOSE_PROJECT_NAME:-pioneerremote}_default}
+    external: ${DEPLOYMENT_NET_EXTERNAL:-false}
