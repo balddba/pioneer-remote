@@ -2,14 +2,51 @@ import React from 'react';
 import { Power, VolumeX, Volume2 } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 
+/**
+ * Props for the {@link PowerControl} component.
+ */
 interface PowerControlProps {
+  /**
+   * Current main power state of the receiver (`true` = ON, `false` = Standby/OFF).
+   */
   power: boolean;
+
+  /**
+   * Current audio mute state (`true` = audio output muted, `false` = normal audio output).
+   */
   muted: boolean;
+
+  /**
+   * Async callback invoked when toggling the main power state.
+   *
+   * @param targetPower - The desired power state (`true` for ON, `false` for Standby).
+   */
   onTogglePower: (targetPower: boolean) => Promise<void>;
+
+  /**
+   * Async callback invoked when toggling the master mute state.
+   *
+   * @param targetMute - The desired mute state (`true` for Muted, `false` for Unmuted).
+   */
   onToggleMute: (targetMute: boolean) => Promise<void>;
+
+  /**
+   * Flag indicating whether an API request is currently in-flight, disabling interactions.
+   */
   isLoading: boolean;
 }
 
+/**
+ * Primary power and master mute control panel for the Pioneer AVR.
+ *
+ * Provides oversized tactile touch buttons with stateful illumination:
+ * - Cyan glow when powered ON, dimmed in Standby.
+ * - Crimson glow when audio is MUTED, neutral when unmuted.
+ * - Includes tactile haptic feedback differentiated by action intensity.
+ *
+ * @param props - Component properties conforming to {@link PowerControlProps}.
+ * @returns Rendered power and mute control card.
+ */
 export const PowerControl: React.FC<PowerControlProps> = ({
   power,
   muted,
@@ -17,23 +54,31 @@ export const PowerControl: React.FC<PowerControlProps> = ({
   onToggleMute,
   isLoading,
 }) => {
+  /**
+   * Handle main power toggle with differentiated haptic feedback.
+   * Uses heavier haptic impulse when turning on to simulate high-inrush physical relay click.
+   */
   const handlePowerClick = () => {
     triggerHaptic(power ? 'medium' : 'heavy');
     onTogglePower(!power);
   };
 
+  /**
+   * Handle audio mute toggle with light tactile response.
+   */
   const handleMuteClick = () => {
     triggerHaptic('light');
     onToggleMute(!muted);
   };
 
   return (
+    // Receiver chassis card with rounded corners and hardware bezel lighting
     <div className="bg-receiver-900 border border-slate-800 rounded-3xl p-4 shadow-xl relative overflow-hidden">
-      {/* Subtle top bevel highlight */}
+      {/* Subtle top bevel highlight simulating brushed metallic edge illumination */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
 
       <div className="grid grid-cols-2 gap-3">
-        {/* Main Power Button */}
+        {/* Main Power Button: Toggles between Standby and Active state with dynamic cyan neon styling */}
         <button
           onClick={handlePowerClick}
           disabled={isLoading}
@@ -44,6 +89,7 @@ export const PowerControl: React.FC<PowerControlProps> = ({
               : 'bg-receiver-800 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-600'
           } active:scale-[0.98] shadow-tactile active:shadow-tactile-pressed disabled:opacity-60`}
         >
+          {/* Circular power icon well with neon ring glow when active */}
           <div
             className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
               power
@@ -61,7 +107,7 @@ export const PowerControl: React.FC<PowerControlProps> = ({
           </span>
         </button>
 
-        {/* Master Mute Button */}
+        {/* Master Mute Button: Toggles audio mute; disabled if receiver is powered off */}
         <button
           onClick={handleMuteClick}
           disabled={isLoading || !power}
@@ -72,6 +118,7 @@ export const PowerControl: React.FC<PowerControlProps> = ({
               : 'bg-receiver-800 border-slate-700/60 text-slate-300 hover:text-slate-100 hover:border-slate-600'
           } active:scale-[0.98] shadow-tactile active:shadow-tactile-pressed disabled:opacity-40`}
         >
+          {/* Circular mute icon well with warning rose ring glow when muted */}
           <div
             className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
               muted

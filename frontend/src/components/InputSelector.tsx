@@ -13,13 +13,40 @@ import {
 import { INPUT_PRESETS, InputPreset, formatInputLabel } from '../types/pioneer';
 import { triggerHaptic } from '../utils/haptics';
 
+/**
+ * Props for the {@link InputSelector} component.
+ */
 interface InputSelectorProps {
+  /**
+   * The currently selected Pioneer input code (e.g. `'FN19'`, `'19'`, `'04'`).
+   */
   currentInput: string;
+
+  /**
+   * Main power state of the receiver. When `false`, the component is visually dimmed
+   * and pointer events are disabled to prevent interactions while in standby.
+   */
   power: boolean;
+
+  /**
+   * Async callback invoked when an input source is selected or a custom FN code is submitted.
+   *
+   * @param inputCode - The target Pioneer function code string (e.g., `'19'`, `'04'`).
+   */
   onSelectInput: (inputCode: string) => Promise<void>;
+
+  /**
+   * Flag indicating whether an API request is currently pending, temporarily disabling interaction.
+   */
   isLoading: boolean;
 }
 
+/**
+ * Helper function mapping input preset icon string names to corresponding Lucide React components.
+ *
+ * @param iconName - Named icon identifier from {@link InputPreset.iconName}.
+ * @returns Instantiated Lucide icon element configured with standard dimensions.
+ */
 const renderIcon = (iconName: InputPreset['iconName']) => {
   const iconClass = 'w-4 h-4';
   switch (iconName) {
@@ -44,24 +71,43 @@ const renderIcon = (iconName: InputPreset['iconName']) => {
   }
 };
 
+/**
+ * Input source selection panel for Pioneer AVRs.
+ *
+ * Provides a responsive categorized grid of input source buttons (HDMI, Media, Audio, Network),
+ * active input highlighting, tactile haptic feedback, and a modal for entering raw Pioneer
+ * Function (FN) codes directly.
+ *
+ * @param props - Component properties conforming to {@link InputSelectorProps}.
+ * @returns Rendered input selection interface.
+ */
 export const InputSelector: React.FC<InputSelectorProps> = ({
   currentInput,
   power,
   onSelectInput,
   isLoading,
 }) => {
+  // Category filter tab state
   const [activeTab, setActiveTab] = useState<'all' | 'hdmi' | 'media' | 'audio' | 'network'>('all');
+
+  // State for raw custom Pioneer function code modal entry
   const [customCode, setCustomCode] = useState<string>('');
   const [showCustomModal, setShowCustomModal] = useState<boolean>(false);
 
-  // Normalize currentInput (e.g. "FN19" -> "19")
+  // Normalize currentInput code for comparison (e.g. strips leading "FN" prefix: "FN19" -> "19")
   const cleanInput = currentInput.replace(/^FN/, '').trim();
 
+  /**
+   * Handle user click on a preset input tile with medium haptic impulse.
+   */
   const handleInputSelect = async (code: string) => {
     triggerHaptic('medium');
     await onSelectInput(code);
   };
 
+  /**
+   * Handle submission of the custom Pioneer FN code modal form.
+   */
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customCode.trim()) return;
@@ -71,12 +117,14 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
     setShowCustomModal(false);
   };
 
+  // Filter input presets based on the currently selected category tab
   const filteredPresets = INPUT_PRESETS.filter((preset) => {
     if (activeTab === 'all') return true;
     return preset.category === activeTab;
   });
 
   return (
+    // Outer card container: dimmed with pointer events disabled when receiver is in Standby
     <div className={`bg-receiver-900 border border-slate-800 rounded-3xl p-5 shadow-xl transition-all ${!power ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Header & Current Active Input Banner */}
       <div className="flex items-center justify-between mb-4">
@@ -89,6 +137,7 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
           </div>
         </div>
 
+        {/* Action button to open custom Pioneer FN code dialog */}
         <button
           onClick={() => {
             triggerHaptic('light');
@@ -101,7 +150,7 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
         </button>
       </div>
 
-      {/* Category Tabs (Horizontal Scrollable for Mobile) */}
+      {/* Category Tabs (Horizontal Scrollable for Mobile screens) */}
       <div className="flex space-x-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
         {(['all', 'hdmi', 'media', 'audio', 'network'] as const).map((tab) => (
           <button
@@ -121,9 +170,10 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
         ))}
       </div>
 
-      {/* Input Presets Grid (Mobile Touch Sized) */}
+      {/* Input Presets Grid (Touch-friendly sizes with active selection glow) */}
       <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-2.5">
         {filteredPresets.map((preset) => {
+          // Check match against normalized code or raw Pioneer code
           const isActive = cleanInput === preset.code || currentInput === preset.code;
           return (
             <button
@@ -136,7 +186,7 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
                   : 'bg-receiver-800/80 border-slate-700/60 text-slate-300 hover:border-slate-600 hover:text-slate-100'
               } active:scale-[0.97] shadow-tactile active:shadow-tactile-pressed disabled:opacity-40`}
             >
-              {/* Active Indicator Pip */}
+              {/* Active Indicator Pip in top-right corner */}
               {isActive && (
                 <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 shadow-glow-cyan" />
               )}
@@ -156,7 +206,7 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
         })}
       </div>
 
-      {/* Custom FN Code Modal */}
+      {/* Custom FN Code Modal Dialog */}
       {showCustomModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-receiver-900 border border-slate-700 rounded-3xl p-5 max-w-sm w-full shadow-2xl">

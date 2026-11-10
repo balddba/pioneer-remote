@@ -3,15 +3,55 @@ import { Volume2, Plus, Minus, ChevronsUp, ChevronsDown } from 'lucide-react';
 import { parseVolumeNumber, volumeToDecibels } from '../types/pioneer';
 import { triggerHaptic } from '../utils/haptics';
 
+/**
+ * Props for the {@link VolumeControl} component.
+ */
 interface VolumeControlProps {
+  /**
+   * The current volume reported by the AVR, as either a raw Pioneer string (e.g. `'080'`, `'VOL080'`)
+   * or a parsed integer between 0 and 161.
+   */
   volume: string | number;
+
+  /**
+   * Main power state of the receiver. When `false`, the component is visually dimmed
+   * and pointer events are disabled.
+   */
   power: boolean;
+
+  /**
+   * Async callback invoked when setting the volume to an explicit numeric value (0-161).
+   *
+   * @param vol - Target volume level integer.
+   */
   onSetVolume: (vol: number) => Promise<void>;
+
+  /**
+   * Async callback invoked to step volume up by one unit using the receiver's native `VU` command.
+   */
   onVolumeUp: () => Promise<void>;
+
+  /**
+   * Async callback invoked to step volume down by one unit using the receiver's native `VD` command.
+   */
   onVolumeDown: () => Promise<void>;
+
+  /**
+   * Flag indicating whether a volume command is currently pending execution.
+   */
   isLoading: boolean;
 }
 
+/**
+ * Master volume control console featuring a digital decibel display, continuous fader slider,
+ * discrete coarse/fine steppers, and quick-access level presets.
+ *
+ * Implements optimistic local drag state so the slider thumb tracks smoothly during touch scrubbing
+ * without being overwritten by asynchronous status poll updates until committed.
+ *
+ * @param props - Component properties conforming to {@link VolumeControlProps}.
+ * @returns Rendered master volume controller.
+ */
 export const VolumeControl: React.FC<VolumeControlProps> = ({
   volume,
   power,
@@ -20,28 +60,49 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
   onVolumeDown,
   isLoading,
 }) => {
+  // Parse incoming volume prop to an integer between 0 and 161
   const currentVol = parseVolumeNumber(volume);
+
+  // Transient slider value maintained during user drag operations
   const [sliderValue, setSliderValue] = useState<number>(currentVol);
+
+  // Tracks active touch or mouse drag interaction
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
+  // Synchronize local slider state with AVR updates when the user is not actively dragging
   useEffect(() => {
     if (!isDragging) {
       setSliderValue(currentVol);
     }
   }, [currentVol, isDragging]);
 
+  /**
+   * Handle continuous slider thumb movement.
+   * Provides light tactile haptic clicks while dragging and updates transient display state.
+   */
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10);
     setSliderValue(val);
     triggerHaptic('light');
   };
 
+  /**
+   * Commit the fader position on touch or mouse release.
+   * Clears drag state, triggers medium haptic confirmation, and dispatches API update.
+   */
   const handleSliderCommit = () => {
     setIsDragging(false);
     triggerHaptic('medium');
     onSetVolume(sliderValue);
   };
 
+  /**
+   * Step volume by a relative delta.
+   * Routes single-unit deltas (+1 / -1) to native Pioneer VU/VD commands for optimal responsiveness,
+   * while multi-unit jumps (+5 / -5) clamp and dispatch direct numeric volume values.
+   *
+   * @param delta - Volume change amount (+5, +1, -1, -5).
+   */
   const handleStep = async (delta: number) => {
     triggerHaptic(Math.abs(delta) > 1 ? 'medium' : 'light');
     if (delta === 1) {
@@ -54,14 +115,21 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
     }
   };
 
+  /**
+   * Jump directly to a predefined volume level preset with tactile confirmation.
+   *
+   * @param targetVol - Target volume level preset.
+   */
   const handlePreset = async (targetVol: number) => {
     triggerHaptic('medium');
     await onSetVolume(targetVol);
   };
 
+  // Calculate volume percentage based on Pioneer AVR scale (max 161)
   const percentage = Math.min(100, Math.max(0, Math.round((currentVol / 161) * 100)));
 
   return (
+    // Outer card container: dimmed with pointer events disabled when receiver is in Standby
     <div className={`bg-receiver-900 border border-slate-800 rounded-3xl p-5 shadow-xl transition-all ${!power ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Header with Title & Level Badge */}
       <div className="flex items-center justify-between mb-4">
@@ -71,6 +139,7 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
             Master Volume
           </span>
         </div>
+        {/* Percentage badge */}
         <span className="text-xs font-mono text-cyan-400/90 font-semibold px-2 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/30">
           {percentage}%
         </span>
@@ -79,6 +148,7 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
       {/* Large Digital Volume & Decibel Readout */}
       <div className="bg-receiver-950 border border-slate-800/90 rounded-2xl p-4 mb-5 text-center shadow-inner flex flex-col items-center justify-center">
         <div className="flex items-baseline space-x-2">
+          {/* Neon numeric volume readout (0-161) */}
           <span className="text-4xl sm:text-5xl font-extrabold font-mono tracking-tighter text-cyan-400 drop-shadow-[0_0_12px_rgba(0,240,255,0.4)]">
             {isDragging ? sliderValue : currentVol}
           </span>
@@ -86,6 +156,7 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
             / 161
           </span>
         </div>
+        {/* Decibel conversion display (e.g., "-20.0 dB", "0.0 dB", "+12.0 dB") */}
         <div className="text-sm font-mono font-medium text-slate-400 mt-1">
           {volumeToDecibels(isDragging ? sliderValue : currentVol)}
         </div>
@@ -109,6 +180,7 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
             aria-label="Volume level fader"
           />
         </div>
+        {/* Reference tick labels below fader */}
         <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1 px-1">
           <span>MIN (0)</span>
           <span>REF 0dB (145)</span>
@@ -116,7 +188,7 @@ export const VolumeControl: React.FC<VolumeControlProps> = ({
         </div>
       </div>
 
-      {/* Step Adjustment Island (Optimized for Mobile Thumbs) */}
+      {/* Step Adjustment Island (Optimized for Mobile Thumb Taps) */}
       <div className="grid grid-cols-4 gap-2 mb-4">
         {/* -5 Coarse Down */}
         <button
